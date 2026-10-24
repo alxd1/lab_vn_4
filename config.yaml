@@ -1,0 +1,11 @@
+jira:
+  base_url: "https://issues.apache.org/jira"
+  project: "KAFKA"
+  api_version: "2"
+  # Optional auth: set JIRA_USER and JIRA_TOKEN in your environment.
+  timeout_seconds: 25
+  page_size: 100
+  max_issues: 300  # Set null to fetch the entire project (may take a long time).
+output_directory: "reports"
+chart_bins: 25
+log_level: "INFO"
