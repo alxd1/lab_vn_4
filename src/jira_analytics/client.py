@@ -42,7 +42,7 @@ class JiraClient:
                 time.sleep(0.5 * (2 ** attempt))
         raise JiraError(f"Unable to fetch {url}")
 
-    def search_issues(self, project, max_issues=None):
+    def search_issues(self, project, max_issues=None, jql=None):
         """Retrieve issues via offset pagination; reject truncated/invalid responses."""
         issues = []
         start = 0
@@ -51,7 +51,7 @@ class JiraClient:
             if limit <= 0:
                 break
             payload = self._get("search", {
-                "jql": f'project = "{project}" ORDER BY created DESC',
+                "jql": jql or f'project = "{project}" ORDER BY created DESC',
                 "fields": "created,resolutiondate,status,assignee,reporter,priority,timespent",
                 "startAt": start, "maxResults": limit,
             })

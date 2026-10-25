@@ -29,7 +29,14 @@ def _hist(data, title, output, filename, bins):
     return _save(fig, output, filename)
 
 
-def build_reports(issues, histories, directory, bins=25, project="JIRA"):
+def build_reports(
+    issues,
+    histories,
+    directory,
+    bins=25,
+    project="JIRA",
+    worklog_issues=None
+):
     """Render six report families and an HTML index; status family has one plot per status."""
     output = Path(directory)
     output.mkdir(parents=True, exist_ok=True)
@@ -79,9 +86,25 @@ def build_reports(issues, histories, directory, bins=25, project="JIRA"):
     ax.set(title="Top 30 users by assigned + reported issues", xlabel="Number of issues", ylabel="User")
     groups.append(("4. Top users", [_save(fig, output, "04_users.png")]))
 
+    worklog_population = (
+        closed
+        if worklog_issues is None
+        else closed_issues(worklog_issues)
+    )
+
+    logged_time = [
+        issue["fields"]["timespent"] / 3600
+        for issue in worklog_population
+        if issue["fields"].get("timespent") is not None
+    ]
+
     groups.append(("5. Logged time", [_hist(
-        [(i["fields"].get("timespent") or 0) / 3600 for i in closed],
-        "Logged time on resolved issues", output, "05_worklog.png", bins)]))
+        logged_time,
+        "Logged time on resolved issues",
+        output,
+        "05_worklog.png",
+        bins
+    )]))
 
     priority = priority_counts(issues)
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -90,12 +113,16 @@ def build_reports(issues, histories, directory, bins=25, project="JIRA"):
     ax.tick_params(axis="x", rotation=30)
     groups.append(("6. Severity / priority", [_save(fig, output, "06_priority.png")]))
 
-    missing_work = sum(i["fields"].get("timespent") is None for i in closed)
+    missing_work = sum(
+        i["fields"].get("timespent") is None
+        for i in worklog_population
+    )
     note = (f"Project: {project}. Issues retrieved: {len(issues)}. Resolved: {len(closed)}. "
             f"Resolved issues with no logged time: {missing_work}. "
+            f"Logged time observations: {len(logged_time)}. "
             "Times use UTC; status durations require complete changelogs. "
             "Severity is approximated by Jira Priority. "
-            "The logged-time plot treats missing time as zero; it cannot attribute work to individual people. "
+            "The logged-time plot excludes missing values; it cannot attribute work to individual people. "
             "If max_issues is set, results describe only the retrieved subset, not the full project.")
     html = ["<!doctype html><html lang='en'><meta charset='utf-8'>",
             "<title>Jira Analytics</title><style>body{font:16px system-ui;max-width:1100px;margin:auto;padding:2rem;color:#223}img{max-width:100%;border:1px solid #ddd;margin:0.5rem 0 2rem}p{line-height:1.6}</style>",

@@ -26,10 +26,38 @@ def run(config_path):
     for number, issue in enumerate(resolved, 1):
         LOG.info("Changelog %s/%s: %s", number, len(resolved), issue["key"])
         histories[issue["key"]] = status_durations(issue, client.status_history(issue["key"]))
+
+    # Отдельно загружаем закрытые задачи с залогированным временем
+    worklog_jql = (
+        f'project = "{jira["project"]}" '
+        'AND resolution IS NOT EMPTY '
+        'AND timeSpent > 0'
+    )
+
+    worklog_issues = client.search_issues(
+        project=jira["project"],
+        max_issues=None,
+        jql=worklog_jql
+    )
+
+    LOG.info(
+        "Found %s resolved issues with logged time",
+        len(worklog_issues)
+    )
+
+    
     destination = Path(config.get("output_directory", "reports"))
     if not destination.is_absolute():
         destination = Path(config_path).resolve().parent / destination
-    result = build_reports(issues, histories, destination, config.get("chart_bins", 25), jira["project"])
+        
+    result = build_reports(
+        issues,
+        histories,
+        destination,
+        config.get("chart_bins", 25),
+        jira["project"],
+        worklog_issues=worklog_issues
+    )
     print(f"Report generated: {result}")
     return result
 
